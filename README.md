@@ -1,4 +1,4 @@
-# Long-term retention for secure MySQL backups
+# Long-term retention for secure MySQL/Postgres backups
 
 This Docker image will backup your MySQL/MariaDB, and Postgres databases following the Grandfather-Father-Son (GFS) retention scheme.
 
