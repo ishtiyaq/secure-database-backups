@@ -1,0 +1,33 @@
+version: "3.8"
+
+services:
+  database:
+    image: postgres:11
+    restart: "no"
+    environment:
+      TZ: "Asia/Kolkata"
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: my_db
+
+  backup:
+    build:
+      dockerfile: Dockerfile
+      context: .
+      target: base
+    image: secure-database-backups:1
+    restart: "no"
+    volumes:
+      - ./backup:/backup
+    environment:
+      TZ: "Asia/Kolkata"
+      DATABASE: postgres
+      DATABASE_HOST: database
+      DATABASE_PORT: 5432
+      DATABASE_USER: postgres
+      DATABASE_DBNAME: my_db
+      DATABASE_PASSWORD: root
+      CHOWN_FILES: "1000:1000"
+      CRON_TIME: "*/2 * * * * "
+      MAX_CPU: 4
+      # AES_PASSPHRASE: my_passphrase

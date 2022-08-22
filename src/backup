@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
+source "$SCRIPT_DIR/lib/env.sh"
+source "$SCRIPT_DIR/lib/db_$(get_env "DATABASE" "mysql").sh"
+source "$SCRIPT_DIR/lib/file.sh"
+
+host="$(get_env "DATABASE_HOST" "mysql")"
+user="$(get_env "DATABASE_USER" "root")"
+port="$(get_env "DATABASE_PORT" "3306")"
+password="$(get_env "DATABASE_PASSWORD")"
+individual_backups="$(get_env "INDIVIDUAL_BACKUPS" false)"
+backup_name="$(get_env "BACKUP_NAME" "main-backup")"
+supersafe_mode="$(get_env "SUPERSAFE_MODE" false)"
+
+wait_for_database "$host" "$port" "$user" "$password" "60"
+
+echo "Backup started at $(date)."
+
+if [ "$individual_backups" = true ]; then
+    databases="$(get_env "DATABASE_DBNAME" "$(get_databases_list "$host" "$port" "$user" "$password")")"
+    for database in $databases; do
+        dump_database "$host" "$port" "$user" "$password" "$database" || continue
+        if [ "$supersafe_mode" = true ]; then
+            archive_file="$(get_archive_name_supersafe_mode "$backup_name.$database")"
+        else
+            archive_file="$(get_archive_name "$backup_name.$database")"
+        fi
+
+        create_archive "$archive_file" "$database.sql"
+    done
+else
+    if [ "$supersafe_mode" = true ]; then
+        archive_file="$(get_archive_name_supersafe_mode "$backup_name")"
+    else
+        archive_file="$(get_archive_name "$backup_name")"
+    fi
+
+    create_archive "$archive_file" "*.sql"
+fi
+
+echo "Backup finished at $(date)."

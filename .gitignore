@@ -1,0 +1,7 @@
+.vscode
+backups
+.DS_Store
+
+test.yml
+docker-compose.test.yml
+test

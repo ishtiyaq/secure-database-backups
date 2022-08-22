@@ -1,0 +1,73 @@
+name: Build and deploy
+
+on:
+  push:
+    tags:
+      - "**"
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: FranzDiebold/github-env-vars-action@v2
+
+      - name: Set major tag name
+        run: echo "TAG_MAJOR=$(echo $CI_REF_NAME | cut -d. -f1)" >> $GITHUB_ENV
+
+      - name: Set major tag name
+        run: echo "TAG_MINOR=${{ env.TAG_MAJOR }}.$(echo $CI_REF_NAME | cut -d. -f2)" >> $GITHUB_ENV
+
+      - name: Build image
+        run: |
+          docker build --no-cache \
+              -t ${{ secrets.DOCKER_USERNAME }}/secure-database-backups:latest \
+              -t ${{ secrets.DOCKER_USERNAME }}/secure-database-backups:$CI_REF_NAME \
+              -t ${{ secrets.DOCKER_USERNAME }}/secure-database-backups:${{ env.TAG_MAJOR }} \
+              -t ${{ secrets.DOCKER_USERNAME }}/secure-database-backups:${{ env.TAG_MINOR }} \
+              --target base .
+
+      - name: Save Docker image as artifact
+        run: |
+          docker save -o /tmp/image.tar \
+              ${{ secrets.DOCKER_USERNAME }}/secure-database-backups:latest \
+              ${{ secrets.DOCKER_USERNAME }}/secure-database-backups:$CI_REF_NAME \
+              ${{ secrets.DOCKER_USERNAME }}/secure-database-backups:${{ env.TAG_MAJOR }} \
+              ${{ secrets.DOCKER_USERNAME }}/secure-database-backups:${{ env.TAG_MINOR }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: image
+          path: /tmp/image.tar
+
+  deploy:
+    name: Deploy
+    needs: [build]
+    runs-on: ubuntu-20.04
+
+    steps:
+      - uses: FranzDiebold/github-env-vars-action@v2
+
+      - name: Set major tag name
+        run: echo "TAG_MAJOR=$(echo $CI_REF_NAME | cut -d. -f1)" >> $GITHUB_ENV
+
+      - name: Set major tag name
+        run: echo "TAG_MINOR=${{ env.TAG_MAJOR }}.$(echo $CI_REF_NAME | cut -d. -f2)" >> $GITHUB_ENV
+
+      - name: Download artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: image
+          path: /tmp
+
+      - name: Load Docker image
+        run: |
+          docker load --input /tmp/image.tar
+          docker image ls -a
+
+      - name: Push Docker image
+        run: |
+          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+          docker push --all-tags ${{ secrets.DOCKER_USERNAME }}/secure-database-backups

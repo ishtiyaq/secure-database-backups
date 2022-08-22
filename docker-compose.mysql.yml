@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  database:
+    image: mysql:8
+    restart: "no"
+    environment:
+      - TZ="Asia/Kolkata"
+      - MYSQL_DATABASE=my_db
+      - MYSQL_ROOT_PASSWORD=root
+  
+  backup:
+    build:
+      dockerfile: Dockerfile
+      context: .
+      target: base
+    image: secure-database-backups:1
+    restart: "no"
+    volumes:
+      - ./backup:/backup
+    environment:
+      TZ: "Asia/Kolkata"
+      DATABASE: mysql
+      DATABASE_HOST: database
+      DATABASE_PORT: 3306
+      DATABASE_USER: root
+      DATABASE_PASSWORD: root
+      CHOWN_FILES: "1000:1000"
+      CRON_TIME: "*/2 * * * * "
+      MAX_CPU: 4
+      # AES_PASSPHRASE: my_passphrase
