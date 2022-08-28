@@ -2,6 +2,11 @@
 
 This Docker image will backup your MySQL/MariaDB, and Postgres databases following the Grandfather-Father-Son (GFS) retention scheme.
 
+## Supported databases
+
+* MySQL/MariadDB
+* PostgresSQL
+
 ## Features
 
 * GFS backups retention scheme
